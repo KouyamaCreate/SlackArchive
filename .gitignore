@@ -39,9 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Slack Export Data
-DLTインターン*
-DLTインターン チームB Slackエクスポート 2026年2月/
-*.zip
-*.json
