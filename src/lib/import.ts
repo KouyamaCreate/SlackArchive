@@ -81,7 +81,10 @@ export async function importSlackZip(file: File): Promise<number> {
                 if (msg.files && Array.isArray(msg.files)) {
                     for (const f of msg.files) {
                         if (f.id && f.url_private && f.mimetype) {
-                            filesToCache.set(f.id, { url: f.url_private, mimetype: f.mimetype });
+                            // Support images, video, and PDF
+                            if (f.mimetype.startsWith('image/') || f.mimetype.startsWith('video/') || f.mimetype === 'application/pdf') {
+                                filesToCache.set(f.id, { url: f.url_private, mimetype: f.mimetype });
+                            }
                         }
                     }
                 }
@@ -114,26 +117,38 @@ export async function importSlackZip(file: File): Promise<number> {
     }
 
     // Attempt to cache all discovered files
-    const cachePromises: Promise<void>[] = [];
-    for (const [fileId, meta] of filesToCache) {
-        cachePromises.push((async () => {
+    const token = localStorage.getItem('slack_token') || '';
+
+    // We only process in small concurrent chunks to not overwhelm the browser/vercel
+    const filesArray = Array.from(filesToCache.entries());
+    const concurrentLimit = 5;
+
+    for (let i = 0; i < filesArray.length; i += concurrentLimit) {
+        const chunk = filesArray.slice(i, i + concurrentLimit);
+        const cachePromises = chunk.map(async ([fileId, meta]) => {
             try {
-                const res = await fetch(meta.url, { mode: 'no-cors' }); // Best effort
-                const blob = await res.blob();
-                await db.files.add({
-                    workspaceId,
-                    fileId,
-                    blob,
-                    mimeType: meta.mimetype
-                });
-            } catch (e) {
+                let res;
+                if (token) {
+                    res = await fetch(`/api/proxy?url=${encodeURIComponent(meta.url)}&token=${encodeURIComponent(token)}`);
+                } else {
+                    res = await fetch(meta.url, { mode: 'no-cors' }); // Best effort
+                }
+
+                if (res && res.ok !== false) { // no-cors returns ok: false, but status 0
+                    const blob = await res.blob();
+                    await db.files.add({
+                        workspaceId,
+                        fileId,
+                        blob,
+                        mimeType: meta.mimetype
+                    });
+                }
+            } catch {
                 console.warn(`Could not cache file ${fileId} from ${meta.url}.`);
             }
-        })());
+        });
+        await Promise.allSettled(cachePromises);
     }
-
-    // We don't want to block the entire import if some files fail
-    await Promise.allSettled(cachePromises);
 
     return workspaceId;
 }

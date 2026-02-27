@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { MediaPreview } from "./MediaPreview";
 
 import { SidebarSections } from "./SidebarSections";
+import { LinkPreview } from "./LinkPreview";
 
 export default function WorkspacePage(props: { params: Promise<{ id: string }> }) {
     const params = use(props.params);
@@ -247,7 +248,7 @@ function ChannelView({ workspaceId, channelId, channels, users }: { workspaceId:
                                                 {msg.files && msg.files.length > 0 && (
                                                     <div className="mt-2 flex flex-col gap-2">
                                                         {msg.files.map((f: any, i: number) => {
-                                                            const isMedia = f.mimetype?.startsWith('image/') || f.mimetype?.startsWith('video/');
+                                                            const isMedia = f.mimetype?.startsWith('image/') || f.mimetype?.startsWith('video/') || f.mimetype === 'application/pdf';
 
                                                             return (
                                                                 <div key={i} className="flex flex-col">
@@ -362,14 +363,23 @@ function SlackTextFormatter({ text, users }: { text: string, users: any[] }) {
                 if (part.startsWith('<http') && part.endsWith('>')) {
                     const inner = part.slice(1, -1);
                     const splitIdx = inner.indexOf('|');
+                    let url = inner;
+                    let label = inner;
+
                     if (splitIdx > -1) {
-                        const url = inner.slice(0, splitIdx);
-                        const label = inner.slice(splitIdx + 1);
-                        return <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{label}</a>;
-                    } else {
-                        const url = inner;
-                        return <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{url}</a>;
+                        url = inner.slice(0, splitIdx);
+                        label = inner.slice(splitIdx + 1);
                     }
+
+                    return (
+                        <span key={i}>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{label}</a>
+                            {/* Attach the specialized OGP preview directly below the link as a block if it's the first standalone link or we render uniquely */}
+                            <div className="block mt-1">
+                                <LinkPreview url={url} />
+                            </div>
+                        </span>
+                    );
                 }
 
                 // Just unescape HTML entities for generic slack texts (&amp;, &lt;, &gt;)

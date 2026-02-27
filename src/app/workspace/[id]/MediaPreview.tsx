@@ -60,5 +60,21 @@ export function MediaPreview({ fileId, fallbackUrl, mimeType, name, workspaceId 
         );
     }
 
+    if (mimeType === 'application/pdf') {
+        return (
+            <div className="mt-2 max-w-[600px] w-full h-[500px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center relative">
+                {dataUrl ? (
+                    <object data={dataUrl} type="application/pdf" className="w-full h-full">
+                        <iframe src={dataUrl} className="w-full h-full border-none" title={name}>
+                            This browser does not support PDFs. Please download the PDF to view it.
+                        </iframe>
+                    </object>
+                ) : (
+                    <div className="w-full h-full animate-pulse bg-gray-200 flex items-center justify-center text-gray-400">Loading PDF...</div>
+                )}
+            </div>
+        );
+    }
+
     return null;
 }
