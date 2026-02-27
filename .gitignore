@@ -1,5 +1,6 @@
-# Slack Exports
-DLTインターン*
-DLTインターン チームB Slackエクスポート 2026年2月
 *.zip
 *.json
+!vercel.json
+!slack-export-viewer/package.json
+!slack-export-viewer/package-lock.json
+!slack-export-viewer/tsconfig.json
